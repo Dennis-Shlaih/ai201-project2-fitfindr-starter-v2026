@@ -47,36 +47,26 @@
 
 ## Tool Inventory
 
-<!-- Four lines per tool. This is worth 2 points and it's the single most
-     common place students lose them.
-
-     "Returns a list" earns NOTHING. The description has to say what is IN
-     the list.
-
-     The empty case isn't optional either — it's the thing your loop branches
-     on, and if you don't decide it here you'll discover it as a crash in
-     Milestone 5. -->
-
 ### `search_listings`
 
-- **What it does:**
-- **Inputs:** <!-- name and type each: `max_price` (float), not "a price" -->
-- **Returns:**
-- **When it has nothing:**
+- **What it does:** Searches the listings data for items matching the requested description and optionally filters by size and maximum price.
+- **Inputs:** `description` (`str`), `size` (`str | None`), `max_price` (`float | None`, inclusive).
+- **Returns:** Up to `config.SEARCH_RESULT_LIMIT` matching listing dictionaries, ordered from highest keyword-overlap score to lowest. Each dictionary contains `id`, `title`, `description`, `category`, `style_tags`, `size`, `condition`, `price`, `colors`, `brand`, and `platform`.
+- **When it has nothing:** Returns an empty list (`[]`) when no listings match the description and provided filters. Size matching is case-insensitive; a requested `M` can match `S/M`, but `L` must not match `XL`.
 
 ### `suggest_outfit`
 
-- **What it does:**
-- **Inputs:**
-- **Returns:**
-- **When it has nothing:**
+- **What it does:** Uses the selected listing and the user's wardrobe to suggest one or two outfits that incorporate the new item.
+- **Inputs:** `new_item` (`dict`), `wardrobe` (`dict` containing an `items` list).
+- **Returns:** A non-empty string containing outfit suggestions. When the wardrobe has items, suggestions should name specific pieces from it; when it is empty, the response should give general styling advice.
+- **When it has nothing:** Does not return an empty string; an empty wardrobe produces general styling advice instead.
 
 ### `create_fit_card`
 
-- **What it does:**
-- **Inputs:**
-- **Returns:**
-- **When it has nothing:**
+- **What it does:** Uses the selected item and outfit suggestion to create a short social-media-style caption for the outfit.
+- **Inputs:** `outfit` (`str`), `new_item` (`dict`).
+- **Returns:** A 2–4 sentence string that describes the outfit's vibe and mentions the new item, its price, and its platform once each.
+- **When it has nothing:** If `outfit` is empty or contains only whitespace, returns a descriptive message instead of calling the model or raising an exception.
 
 ---
 
