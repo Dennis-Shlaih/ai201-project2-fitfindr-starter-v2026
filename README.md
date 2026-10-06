@@ -39,9 +39,7 @@
 
 ## What This Does
 
-<!-- Three or four sentences: what a user asks for, and what they get back. -->
-
-
+FitFindr helps users find thrifted clothing and build an outfit around a selected listing. A user describes an item they want, optionally including a size and maximum price, and the agent searches the listings data for matches. If a match is found, it uses the user's wardrobe to suggest outfits and creates a short fit-card caption for the selected item. If no listing matches, the agent stops and tells the user what parts of the search they can change.
 
 ---
 
@@ -204,24 +202,23 @@ Obsessed with how these Vintage Levi's 501 Jeans in medium wash fit, so I just d
 
 ## How I Used AI
 
-<!-- Two specific moments. What you asked, what came back, what you changed.
-
-     "I used Claude to help me code" is not enough.
-
-     "I gave Claude my search_listings spec. It returned None on no match
-     instead of an empty list, so I changed it" is the level we want. -->
-
 **Moment 1**
 
-- *What I asked for:*
-- *What came back:*
-- *What I changed:*
+- *What I asked for:* I used copilot to help correct the three tools from
+  the specifications in `tools.py`.
+- *What came back:* It identified that my code had invalid syntax at
+  `return response.strip() and def create_fit_card(...)`, then drafted the
+  search, outfit-suggestion, and fit-card implementations.
+- *What I changed:* I reviewed the implementation against the listing and
+  wardrobe data shapes, kept the inclusive price filter and token-based size
+  matching, and made empty model responses raise an explicit error instead of
+  silently returning an empty string.
 
 **Moment 2**
 
-- *What I asked for:*
-- *What came back:*
-- *What I changed:*
+- *What I asked for:* I used copilot to help connect the three tools into the required planning loop in `agent.py`, including the empty-search branch and session state.
+- *What came back:* It explained how run_agent should parse the query, call search_listings, stop when the result is empty, store the selected listing in session["selected_item"], and pass that same item to the next tools.
+- *What I changed:* I implemented the loop in the code, kept the starter structure and variable names, and tested both the matching and no-match paths. I verified that the empty path stops before generating an outfit or fit card and that the selected listing is preserved through the later tool calls.
 
 <!-- ═══════════════════════ UNIT 4 — THE TEST ═══════════════════════
 
