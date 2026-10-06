@@ -83,13 +83,24 @@
      The grader checks your code against what you claim here, so the file and
      function have to be real. -->
 
-**Branch rule:**
+**Branch rule:** If `search_listings` returns an empty list, `run_agent` stores
+a message explaining that the user can change the description, size, or price
+limit and returns without calling `suggest_outfit`. Otherwise, it stores the
+first result in `session["selected_item"]` and continues through the outfit and
+fit-card tools.
 
 **Where it lives:** `agent.py::run_agent`
 
-**How the query is parsed:** <!-- regex, string splitting, or asking the model — say which -->
+**How the query is parsed:** Regular expressions extract an optional size
+introduced by `size` or `in size` and an optional maximum price introduced by
+phrases such as `under`, `below`, `up to`, or `max`. The remaining text is the
+search description.
 
-**What moves through the session:** <!-- which fields, in what order -->
+**What moves through the session:** The parsed description, size, and maximum
+price go into `session["parsed"]`; results go into `session["search_results"]`;
+the first result goes into `session["selected_item"]`; then the outfit
+suggestion and caption go into `session["outfit_suggestion"]` and
+`session["fit_card"]`.
 
 ---
 
@@ -103,25 +114,90 @@
 **One full query**
 
 ```
-$ python app.py ask '...'
+$ python app.py ask 'vintage graphic tee under $30'
+Found:    Y2K Baby Tee — Butterfly Print — $18.0 on depop
 
+  Outfit:   Hey there! As your stylist, I am so excited to style this Y2K butterfly baby tee for you. Because it's fitted and cropped with those lovely pastel pink and purple tones, the key to balancing the outfit is playing with proportions and contrasting the cute graphic with a bit of edge.
+
+Here are two practical, effortlessly cool outfits using pieces straight from your wardrobe:
+
+### Outfit 1: Off-Duty Streetwear (Y2K Meets Grunge)
+* **New Item:** Y2K Baby Tee — Butterfly Print
+* **Wardrobe Pieces:**
+  * Baggy straight-leg jeans (dark wash)
+  * Black cropped zip hoodie
+  * Chunky white sneakers
+  * Black crossbody bag
+
+**The Vibe & Why It Works:**
+This is the ultimate homage to 2000s off-duty style. The super-fitted, cropped silhouette of the baby tee creates a fantastic contrast against your high-waisted, dark wash baggy jeans. Throwing the black cropped zip hoodie on top (worn unzipped or casually slung over your shoulders) adds that effortless streetwear edge. Tie the look together with your chunky white sneakers and the black crossbody bag for a practical, ultra-comfortable city day-off look.
+
+---
+
+### Outfit 2: Vintage Retro-Chic (Smart-Casual Balance)
+* **New Item:** Y2K Baby Tee — Butterfly Print
+* **Wardrobe Pieces:**
+  * Wide-leg khaki trousers
+  * Vintage black denim jacket
+  * Black combat boots
+  * Brown leather belt
+
+**The Vibe & Why It Works:**
+If you want to lean a little more into the "vintage" and "cottagecore" style tags of the top while keeping it grounded for everyday wear, this combination is a winner. Tucking the baby tee into your wide-leg khaki trousers (accentuated with the brown leather belt to pull in some earth tones) creates a polished, high-waisted silhouette. Layer the slightly cropped vintage black denim jacket on top to add texture, and finish the outfit with your black combat boots. The mix of the sweet butterfly graphic with the utilitarian trousers and boots gives it a really cool, curated high-low fashion feel.
+
+Which one are you wearing first?
+
+  Fit card: Obsessed with this Y2K Baby Tee — Butterfly Print I just scored for only $18.00 on depop! It gives major off-duty streetwear vibes when you style the sweet pastel graphic with baggy denim and chunky sneakers. Honestly can't wait to wear this all summer long.
 ```
 
 **The three tools, tested one at a time**
 
+**`search_listings`**
+
 ```
 $ python -c "from tools import search_listings; print(search_listings('graphic tee', max_price=30))"
-
+[{'id': 'lst_002', 'title': 'Y2K Baby Tee — Butterfly Print', 'description': 'Super cute early 2000s baby tee with butterfly graphic. Fitted crop length. Tag says medium but fits like a small.', 'category': 'tops', 'style_tags': ['y2k', 'vintage', 'graphic tee', 'cottagecore'], 'size': 'S/M', 'condition': 'excellent', 'price': 18.0, 'colors': ['white', 'pink', 'purple'], 'brand': None, 'platform': 'depop'}, {'id': 'lst_006', 'title': 'Graphic Tee — 2003 Tour Bootleg Style', 'description': 'Vintage-style bootleg tee with faded graphic. Slightly boxy fit. 100% cotton, soft and worn-in.', 'category': 'tops', 'style_tags': ['graphic tee', 'vintage', 'grunge', 'streetwear', 'band tee'], 'size': 'L', 'condition': 'good', 'price': 24.0, 'colors': ['black'], 'brand': None, 'platform': 'depop'}, {'id': 'lst_017', 'title': 'Mesh Long-Sleeve Top — Black', 'description': 'Sheer black mesh long-sleeve. Great for layering under a graphic tee or over a bralette. Stretchy material, fits true to size.', 'category': 'tops', 'style_tags': ['y2k', 'grunge', 'goth', 'layering'], 'size': 'S/M', 'condition': 'excellent', 'price': 15.0, 'colors': ['black'], 'brand': None, 'platform': 'depop'}, {'id': 'lst_033', 'title': 'Vintage Band Tee — Faded Grey', 'description': 'Faded grey band-style tee with distressed graphic. Crew neck. Fits boxy. Well-loved but no holes or major damage.', 'category': 'tops', 'style_tags': ['vintage', 'grunge', 'band tee', 'graphic tee', 'streetwear'], 'size': 'L', 'condition': 'fair', 'price': 19.0, 'colors': ['grey', 'charcoal'], 'brand': None, 'platform': 'depop'}, {'id': 'lst_011', 'title': 'Low-Rise Cargo Pants — Khaki', 'description': 'Y2K era low-rise cargo pants. Lots of pockets. Khaki color, slightly distressed at the hems. Great for layering with a long tee.', 'category': 'bottoms', 'style_tags': ['y2k', 'cargo', '2000s', 'streetwear'], 'size': 'W29', 'condition': 'fair', 'price': 27.0, 'colors': ['khaki', 'tan'], 'brand': None, 'platform': 'poshmark'}, {'id': 'lst_015', 'title': 'Vintage Graphic Hoodie — Faded Black', 'description': 'Faded black pullover hoodie with barely-visible vintage graphic on the chest. Cozy interior. Some pilling but adds to the worn-in look.', 'category': 'tops', 'style_tags': ['vintage', 'grunge', 'graphic', 'streetwear'], 'size': 'L', 'condition': 'fair', 'price': 26.0, 'colors': ['black', 'charcoal'], 'brand': None, 'platform': 'depop'}]
 ```
 
-```
-$ python -c "from tools import suggest_outfit; ..."
+**`suggest_outfit`**
 
 ```
+$ python -c "from tools import suggest_outfit; from utils.data_loader import load_listings, get_example_wardrobe; print(suggest_outfit(load_listings()[0], get_example_wardrobe()))"
+Hello! I am so excited to style these Vintage Levi's 501s for you—a medium-wash straight-leg is truly the ultimate wardrobe workhorse.
+
+Here are two practical, effortlessly cool outfit combinations utilizing pieces straight from your existing closet:
+
+### Outfit 1: The Off-Duty Streetwear Look
+* **The Look:** Cool, casual, and balanced between fitted and oversized.
+* **Pieces to pair with your new Levi's:**
+  * **White ribbed tank top** (Tops)
+  * **Black cropped zip hoodie** (Tops — worn open or half-zipped)
+  * **Chunky white sneakers** (Shoes)
+  * **Black crossbody bag** (Accessories)
+
+**Why it works:**
+The slim-to-straight fit of the 501s creates a great silhouette when balanced with a fitted base like your white ribbed tank. Layering the black cropped zip hoodie on top adds depth and leans into that effortless streetwear vibe. Finishing the fit with your chunky white sneakers and the black crossbody bag ties the black-and-white accents together while keeping the outfit ultra-comfortable for a day of running errands or grabbing coffee.
+
+---
+
+### Outfit 2: The Vintage Denim-on-Denim Edge
+* **The Look:** Classic, textured, and slightly grungy with a deliberate nod to vintage styling.
+* **Pieces to pair with your new Levi's:**
+  * **White ribbed tank top** (Tops)
+  * **Vintage black denim jacket** (Outerwear)
+  * **Brown leather belt** (Accessories)
+  * **Black combat boots** (Shoes)
+  * **Black crossbody bag** (Accessories)
+
+**Why it works:**
+Denim-on-denim is timeless, but pairing a medium-wash blue jean with a vintage black denim jacket keeps it modern and intentional (avoiding the "Canadian tuxedo" trap by mixing your washes). Tucking the white ribbed tank in and cinching the 501s with your brown leather belt adds a polished structure to the waist. Finally, grounding the outfit with your black combat boots and crossbody bag gives the classic denim pieces a tougher, downtown-cool edge.
+```
+
+**`create_fit_card`**
 
 ```
-$ python -c "from tools import create_fit_card; ..."
-
+$ python -c "from tools import create_fit_card; from utils.data_loader import load_listings; print(create_fit_card('jeans and white sneakers', load_listings()[0]))"
+Obsessed with how these Vintage Levi's 501 Jeans in medium wash fit, so I just dropped them on depop for $38.00. I styled them with crisp white sneakers for that effortlessly cool, 90s-off-duty model vibe. Seriously the easiest everyday uniform you could ask for.
 ```
 
 ---

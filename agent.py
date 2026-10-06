@@ -13,10 +13,66 @@ Build and test your three tools in `tools.py` first. Then come here.
     python agent.py          runs both example paths below
 """
 
+import re
+
 import config
 import trace
 from tools import search_listings, suggest_outfit, create_fit_card
 from generate import ModelUnavailable
+
+
+def parse_query(query: str) -> tuple[str, str | None, float | None]:
+    """Extract a search description, optional size, and optional price ceiling.
+
+    Recognizes sizes introduced by ``size`` (optionally ``in size``), and
+    prices introduced by ``under``, ``below``, ``less than``, ``up to``,
+    ``at most``, or ``max``. Unrecognized text remains part of the description.
+    """
+    description = query.strip()
+    size: str | None = None
+    max_price: float | None = None
+
+    price_match = re.search(
+        r"\b(?:under|below|less\s+than|up\s+to|at\s+most|max(?:imum)?"
+        r"(?:\s+price)?(?:\s+of)?)\s*\$?\s*(\d+(?:\.\d{1,2})?)\b",
+        description,
+        flags=re.IGNORECASE,
+    )
+    if price_match:
+        max_price = float(price_match.group(1))
+        description = (
+            description[:price_match.start()] + description[price_match.end():]
+        )
+
+    size_match = re.search(
+        r"\b(?:in\s+)?size\s+"
+        r"(?:(US|UK)\s*)?"
+        r"(one\s+size|[A-Z]\d{1,2}\s+[A-Z]\d{1,2}|"
+        r"[A-Z0-9]+(?:\s*/\s*[A-Z0-9]+)?)\b",
+        description,
+        flags=re.IGNORECASE,
+    )
+    if size_match:
+        size = " ".join(
+            part for part in (size_match.group(1), size_match.group(2)) if part
+        )
+        size = re.sub(r"\s*/\s*", "/", size).upper()
+        description = (
+            description[:size_match.start()] + description[size_match.end():]
+        )
+
+    description = re.sub(
+        r"^\s*(?:looking\s+for|searching\s+for|find\s+me)\s+",
+        "",
+        description,
+        flags=re.IGNORECASE,
+    )
+    description = re.sub(
+        r"^\s*(?:a|an|the)\s+", "", description, flags=re.IGNORECASE
+    )
+    description = re.sub(r"\s+", " ", description).strip(" \t\n,;:")
+
+    return description, size, max_price
 
 
 # ── session state ─────────────────────────────────────────────────────────────
@@ -106,9 +162,62 @@ def run_agent(query: str, wardrobe: dict) -> dict:
         than a stack trace. The import is already at the top of this file.
     """
     session = new_session(query, wardrobe)
+    count = 0
 
-    # TODO: delete these two lines and build the loop.
-    session["error"] = "The planning loop isn't built yet — see the TODO in agent.py."
+    # 1. Parse the user's query.
+    count += 1
+    trace.check_iterations(count)
+    description, size, max_price = parse_query(query)
+    session["parsed"] = {
+        "description": description,
+        "size": size,
+        "max_price": max_price,
+    }
+
+    # 2. Search for listings.
+    count += 1
+    trace.check_iterations(count)
+    search_results = search_listings(
+        session["parsed"]["description"],
+        session["parsed"]["size"],
+        session["parsed"]["max_price"],
+    )
+    session["search_results"] = search_results
+
+    # 3. Branch: stop if there are no matching listings.
+    count += 1
+    trace.check_iterations(count)
+    if not session["search_results"]:
+        session["error"] = (
+            "No listings matched your search. Try changing the description, "
+            "size, or maximum price."
+        )
+        return session
+
+    # 4. Select the first result and store it in session state.
+    count += 1
+    trace.check_iterations(count)
+    session["selected_item"] = session["search_results"][0]
+
+    # 5. Use the selected item from session to suggest an outfit.
+    count += 1
+    trace.check_iterations(count)
+    outfit_suggestion = suggest_outfit(
+        session["selected_item"],
+        session["wardrobe"],
+    )
+    session["outfit_suggestion"] = outfit_suggestion
+
+    # 6. Use the outfit suggestion and selected item from session
+    #    to create the final fit card.
+    count += 1
+    trace.check_iterations(count)
+    fit_card = create_fit_card(
+        session["outfit_suggestion"],
+        session["selected_item"],
+    )
+    session["fit_card"] = fit_card
+
     return session
 
 
